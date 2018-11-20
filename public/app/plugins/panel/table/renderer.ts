@@ -1,6 +1,8 @@
 import _ from 'lodash';
 import moment from 'moment';
 import kbn from 'app/core/utils/kbn';
+import { oneLineTrim } from 'common-tags';
+import { compact } from 'lodash/array';
 
 export class TableRenderer {
   formatters: any[];
@@ -318,6 +320,57 @@ export class TableRenderer {
     }
 
     return html;
+  }
+
+  renderColumnAggregation() {
+    const { min, max } = Math;
+
+    const cnt = (...points) => points.length;
+    const sum = (...points) => points.reduce((memo, el) => (memo += el));
+    const avg = (...points) => sum(...points) / cnt(...points);
+
+    const castType = (value, columnDefinition) => {
+      const { type } = columnDefinition.style;
+      if (type === 'number') {
+        return Number(value);
+      }
+      return value;
+    };
+
+    const extractColumnValues = (columnIndex, columnDefinition) =>
+      compact(this.table.rows.map(row => castType(row[columnIndex], columnDefinition)));
+
+    const applyAggregationFunc = (columnIndex, func, columnDefinition) =>
+      func(...extractColumnValues(columnIndex, columnDefinition));
+
+    const aggregatedColumns = this.table.columns.map((columnDefinition, columnIndex) => {
+      const { aggregation } = columnDefinition.style;
+      if (columnDefinition.hidden) {
+        return ``;
+      }
+      const functionsMap = { min, max, avg, sum, cnt };
+      const aggregationFunction = functionsMap[aggregation];
+      return oneLineTrim`
+          <td style="font-weight: bold">
+            ${
+              aggregationFunction
+                ? oneLineTrim`
+                  <span style="text-transform: capitalize">${aggregation}</span>&nbsp;
+                  ${this.formatColumnValue(
+                    columnIndex,
+                    applyAggregationFunc(columnIndex, aggregationFunction, columnDefinition)
+                  )}
+                `
+                : '&nbsp;'
+            }
+          </td>
+        `;
+    });
+    return oneLineTrim`
+      <tr class="aggregation">
+        ${aggregatedColumns.join('')}
+      </tr>
+    `;
   }
 
   render_values() {

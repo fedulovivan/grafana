@@ -7,6 +7,7 @@ export class ColumnOptionsCtrl {
   colorModes: any;
   columnStyles: any;
   columnTypes: any;
+  aggregations: any;
   fontSizes: any;
   dateFormats: any;
   addColumnSegment: any;
@@ -44,6 +45,14 @@ export class ColumnOptionsCtrl {
       { text: 'YYYY-MM-DD', value: 'YYYY-MM-DD' },
     ];
     this.mappingTypes = [{ text: 'Value to text', value: 1 }, { text: 'Range to text', value: 2 }];
+
+    this.aggregations = [
+      { text: 'Min', value: 'min' },
+      { text: 'Max', value: 'max' },
+      { text: 'Avg', value: 'avg' },
+      { text: 'Sum', value: 'sum' },
+      { text: 'Count', value: 'cnt' },
+    ];
 
     this.getColumnNames = () => {
       if (!this.panelCtrl.table) {

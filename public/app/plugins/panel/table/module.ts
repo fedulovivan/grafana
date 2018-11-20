@@ -67,7 +67,7 @@ class TablePanelCtrl extends MetricsPanelCtrl {
 
   onInitEditMode() {
     this.addEditorTab('Options', tablePanelEditor, 2);
-    this.addEditorTab('Column Styles', columnOptionsTab, 3);
+    this.addEditorTab('Columns', columnOptionsTab, 3);
   }
 
   onInitPanelActions(actions) {
@@ -186,9 +186,15 @@ class TablePanelCtrl extends MetricsPanelCtrl {
     }
 
     function appendTableRows(tbodyElem) {
-      ctrl.renderer.setTable(data);
+      // ctrl.renderer.setTable(data);
       tbodyElem.empty();
       tbodyElem.html(ctrl.renderer.render(ctrl.pageIndex));
+    }
+
+    function appendColumnAggregation(tfootElem) {
+      // ctrl.renderer.setTable(data);
+      tfootElem.empty();
+      tfootElem.html(ctrl.renderer.renderColumnAggregation());
     }
 
     function switchPage(e) {
@@ -226,12 +232,17 @@ class TablePanelCtrl extends MetricsPanelCtrl {
       const panelElem = elem.parents('.panel-content');
       const rootElem = elem.find('.table-panel-scroll');
       const tbodyElem = elem.find('tbody');
+      const tfootElem = elem.find('tfoot');
       const footerElem = elem.find('.table-panel-footer');
 
       elem.css({ 'font-size': panel.fontSize });
       panelElem.addClass('table-panel-content');
 
+      // extracted from appendTableRows
+      ctrl.renderer.setTable(data);
+
       appendTableRows(tbodyElem);
+      appendColumnAggregation(tfootElem);
       appendPaginationControls(footerElem);
 
       rootElem.css({ 'max-height': panel.scroll ? getTableHeight() : '' });
