@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom';
 import { Change, Value } from 'slate';
 import { Editor } from 'slate-react';
 import Plain from 'slate-plain-serializer';
+import classnames from 'classnames';
 
 import { CompletionItem, CompletionItemGroup, TypeaheadOutput } from 'app/types/explore';
 
@@ -27,14 +28,15 @@ function hasSuggestions(suggestions: CompletionItemGroup[]): boolean {
   return suggestions && suggestions.length > 0;
 }
 
-interface QueryFieldProps {
+export interface QueryFieldProps {
   additionalPlugins?: any[];
   cleanText?: (text: string) => string;
-  initialValue: string | null;
+  disabled?: boolean;
+  initialQuery: string | null;
   onBlur?: () => void;
   onFocus?: () => void;
   onTypeahead?: (typeahead: TypeaheadInput) => TypeaheadOutput;
-  onValueChanged?: (value: Value) => void;
+  onValueChanged?: (value: string) => void;
   onWillApplySuggestion?: (suggestion: string, state: QueryFieldState) => string;
   placeholder?: string;
   portalOrigin?: string;
@@ -60,19 +62,26 @@ export interface TypeaheadInput {
   wrapperNode: Element;
 }
 
+/**
+ * Renders an editor field.
+ * Pass initial value as initialQuery and listen to changes in props.onValueChanged.
+ * This component can only process strings. Internally it uses Slate Value.
+ * Implement props.onTypeahead to use suggestions, see PromQueryField.tsx as an example.
+ */
 export class QueryField extends React.PureComponent<QueryFieldProps, QueryFieldState> {
   menuEl: HTMLElement | null;
   placeholdersBuffer: PlaceholdersBuffer;
   plugins: any[];
   resetTimer: any;
+  mounted: boolean;
 
-  constructor(props, context) {
+  constructor(props: QueryFieldProps, context) {
     super(props, context);
 
-    this.placeholdersBuffer = new PlaceholdersBuffer(props.initialValue || '');
+    this.placeholdersBuffer = new PlaceholdersBuffer(props.initialQuery || '');
 
     // Base plugins
-    this.plugins = [ClearPlugin(), NewlinePlugin(), ...props.additionalPlugins].filter(p => p);
+    this.plugins = [ClearPlugin(), NewlinePlugin(), ...(props.additionalPlugins || [])].filter(p => p);
 
     this.state = {
       suggestions: [],
@@ -85,14 +94,16 @@ export class QueryField extends React.PureComponent<QueryFieldProps, QueryFieldS
   }
 
   componentDidMount() {
+    this.mounted = true;
     this.updateMenu();
   }
 
   componentWillUnmount() {
+    this.mounted = false;
     clearTimeout(this.resetTimer);
   }
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(prevProps: QueryFieldProps, prevState: QueryFieldState) {
     // Only update menu location when suggestion existence or text/selection changed
     if (
       this.state.value !== prevState.value ||
@@ -339,13 +350,15 @@ export class QueryField extends React.PureComponent<QueryFieldProps, QueryFieldS
   };
 
   resetTypeahead = () => {
-    this.setState({
-      suggestions: [],
-      typeaheadIndex: 0,
-      typeaheadPrefix: '',
-      typeaheadContext: null,
-    });
-    this.resetTimer = null;
+    if (this.mounted) {
+      this.setState({
+        suggestions: [],
+        typeaheadIndex: 0,
+        typeaheadPrefix: '',
+        typeaheadContext: null,
+      });
+      this.resetTimer = null;
+    }
   };
 
   handleBlur = () => {
@@ -434,12 +447,17 @@ export class QueryField extends React.PureComponent<QueryFieldProps, QueryFieldS
   };
 
   render() {
+    const { disabled } = this.props;
+    const wrapperClassName = classnames('slate-query-field__wrapper', {
+      'slate-query-field__wrapper--disabled': disabled,
+    });
     return (
-      <div className="slate-query-field-wrapper">
+      <div className={wrapperClassName}>
         <div className="slate-query-field">
           {this.renderMenu()}
           <Editor
             autoCorrect={false}
+            readOnly={this.props.disabled}
             onBlur={this.handleBlur}
             onKeyDown={this.onKeyDown}
             onChange={this.onChange}

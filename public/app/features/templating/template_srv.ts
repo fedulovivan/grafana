@@ -17,6 +17,7 @@ export class TemplateSrv {
   constructor() {
     this.builtIns['__interval'] = { text: '1s', value: '1s' };
     this.builtIns['__interval_ms'] = { text: '100', value: '100' };
+    this.variables = [];
   }
 
   init(variables) {
@@ -76,6 +77,15 @@ export class TemplateSrv {
     return '(' + quotedValues.join(' OR ') + ')';
   }
 
+  // encode string according to RFC 3986; in contrast to encodeURIComponent()
+  // also the sub-delims "!", "'", "(", ")" and "*" are encoded;
+  // unicode handling uses UTF-8 as in ECMA-262.
+  encodeURIComponentStrict(str) {
+    return encodeURIComponent(str).replace(/[!'()*]/g, (c) => {
+      return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+    });
+  }
+
   formatValue(value, format, variable) {
     // for some scopedVars there is no variable
     variable = variable || {};
@@ -116,6 +126,13 @@ export class TemplateSrv {
           return value.join(',');
         }
         return value;
+      }
+      case 'percentencode': {
+        // like glob, but url escaped
+        if (_.isArray(value)) {
+          return this.encodeURIComponentStrict('{' + value.join(',') + '}');
+        }
+        return this.encodeURIComponentStrict(value);
       }
       default: {
         if (_.isArray(value)) {
@@ -237,7 +254,9 @@ export class TemplateSrv {
         return match;
       }
 
-      return this.grafanaVariables[variable.current.value] || variable.current.text;
+      const value = this.grafanaVariables[variable.current.value];
+
+      return typeof(value) === 'string' ? value : variable.current.text;
     });
   }
 

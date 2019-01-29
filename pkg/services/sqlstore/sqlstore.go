@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/sqlstore/migrator"
 	"github.com/grafana/grafana/pkg/services/sqlstore/sqlutil"
 	"github.com/grafana/grafana/pkg/setting"
+	"github.com/grafana/grafana/pkg/util"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/go-xorm/xorm"
@@ -222,13 +223,9 @@ func (ss *SqlStore) buildConnectionString() (string, error) {
 			cnnstr += "&tls=custom"
 		}
 	case migrator.POSTGRES:
-		var host, port = "127.0.0.1", "5432"
-		fields := strings.Split(ss.dbCfg.Host, ":")
-		if len(fields) > 0 && len(strings.TrimSpace(fields[0])) > 0 {
-			host = fields[0]
-		}
-		if len(fields) > 1 && len(strings.TrimSpace(fields[1])) > 0 {
-			port = fields[1]
+		host, port, err := util.SplitIpPort(ss.dbCfg.Host, "5432")
+		if err != nil {
+			return "", err
 		}
 		if ss.dbCfg.Pwd == "" {
 			ss.dbCfg.Pwd = "''"
@@ -243,7 +240,7 @@ func (ss *SqlStore) buildConnectionString() (string, error) {
 			ss.dbCfg.Path = filepath.Join(ss.Cfg.DataPath, ss.dbCfg.Path)
 		}
 		os.MkdirAll(path.Dir(ss.dbCfg.Path), os.ModePerm)
-		cnnstr = "file:" + ss.dbCfg.Path + "?cache=shared&mode=rwc"
+		cnnstr = fmt.Sprintf("file:%s?cache=%s&mode=rwc", ss.dbCfg.Path, ss.dbCfg.CacheMode)
 	default:
 		return "", fmt.Errorf("Unknown database type: %s", ss.dbCfg.Type)
 	}
@@ -319,6 +316,8 @@ func (ss *SqlStore) readConfig() {
 	ss.dbCfg.ClientCertPath = sec.Key("client_cert_path").String()
 	ss.dbCfg.ServerCertName = sec.Key("server_cert_name").String()
 	ss.dbCfg.Path = sec.Key("path").MustString("data/grafana.db")
+
+	ss.dbCfg.CacheMode = sec.Key("cache_mode").MustString("private")
 }
 
 func InitTestDB(t *testing.T) *SqlStore {
@@ -391,13 +390,20 @@ func IsTestDbPostgres() bool {
 }
 
 type DatabaseConfig struct {
-	Type, Host, Name, User, Pwd, Path, SslMode string
-	CaCertPath                                 string
-	ClientKeyPath                              string
-	ClientCertPath                             string
-	ServerCertName                             string
-	ConnectionString                           string
-	MaxOpenConn                                int
-	MaxIdleConn                                int
-	ConnMaxLifetime                            int
+	Type             string
+	Host             string
+	Name             string
+	User             string
+	Pwd              string
+	Path             string
+	SslMode          string
+	CaCertPath       string
+	ClientKeyPath    string
+	ClientCertPath   string
+	ServerCertName   string
+	ConnectionString string
+	MaxOpenConn      int
+	MaxIdleConn      int
+	ConnMaxLifetime  int
+	CacheMode        string
 }
