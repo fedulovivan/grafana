@@ -3,6 +3,7 @@ import moment from 'moment';
 import kbn from 'app/core/utils/kbn';
 import { oneLineTrim } from 'common-tags';
 import { compact } from 'lodash/array';
+import { get } from 'lodash/object';
 
 export class TableRenderer {
   formatters: any[];
@@ -330,7 +331,7 @@ export class TableRenderer {
     const avg = (...points) => sum(...points) / cnt(...points);
 
     const castType = (value, columnDefinition) => {
-      const { type } = columnDefinition.style;
+      const type = get(columnDefinition, 'style.type');
       if (type === 'number') {
         return Number(value);
       }
@@ -344,9 +345,12 @@ export class TableRenderer {
       func(...extractColumnValues(columnIndex, columnDefinition));
 
     const aggregatedColumns = this.table.columns.map((columnDefinition, columnIndex) => {
-      const { aggregation } = columnDefinition.style;
       if (columnDefinition.hidden) {
         return ``;
+      }
+      const aggregation = get(columnDefinition, 'style.aggregation');
+      if (!aggregation) {
+        return oneLineTrim`<td></td>`;
       }
       const functionsMap = { min, max, avg, sum, cnt };
       const aggregationFunction = functionsMap[aggregation];
