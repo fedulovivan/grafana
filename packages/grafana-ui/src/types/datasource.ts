@@ -1,9 +1,9 @@
 import { TimeRange, RawTimeRange } from './time';
-import { TimeSeries } from './series';
 import { PluginMeta } from './plugin';
+import { TableData, TimeSeries } from './data';
 
 export interface DataQueryResponse {
-  data: TimeSeries[];
+  data: TimeSeries[] | [TableData] | any;
 }
 
 export interface DataQuery {
@@ -27,6 +27,16 @@ export interface DataQuery {
    * For non mixed scenarios this is undefined.
    */
   datasource?: string | null;
+}
+
+export interface DataQueryError {
+  data?: {
+    message?: string;
+    error?: string;
+  };
+  message?: string;
+  status?: string;
+  statusText?: string;
 }
 
 export interface DataQueryOptions<TQuery extends DataQuery = DataQuery> {

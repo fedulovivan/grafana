@@ -3,15 +3,9 @@ import React, { PureComponent } from 'react';
 
 import * as rangeUtil from 'app/core/utils/rangeutil';
 import { RawTimeRange, Switch } from '@grafana/ui';
-import {
-  LogsDedupDescription,
-  LogsDedupStrategy,
-  LogsModel,
-  dedupLogRows,
-  filterLogLevels,
-  LogLevel,
-  LogsMetaKind,
-} from 'app/core/logs_model';
+import TimeSeries from 'app/core/time_series2';
+
+import { LogsDedupDescription, LogsDedupStrategy, LogsModel, LogLevel, LogsMetaKind } from 'app/core/logs_model';
 
 import ToggleButtonGroup, { ToggleButton } from 'app/core/components/ToggleButtonGroup/ToggleButtonGroup';
 
@@ -49,22 +43,26 @@ function renderMetaItem(value: any, kind: LogsMetaKind) {
 
 interface Props {
   data?: LogsModel;
+  dedupedData?: LogsModel;
+  width: number;
   exploreId: string;
   highlighterExpressions: string[];
   loading: boolean;
   range?: RawTimeRange;
   scanning?: boolean;
   scanRange?: RawTimeRange;
+  dedupStrategy: LogsDedupStrategy;
+  hiddenLogLevels: Set<LogLevel>;
   onChangeTime?: (range: RawTimeRange) => void;
   onClickLabel?: (label: string, value: string) => void;
   onStartScanning?: () => void;
   onStopScanning?: () => void;
+  onDedupStrategyChange: (dedupStrategy: LogsDedupStrategy) => void;
+  onToggleLogLevel: (hiddenLogLevels: Set<LogLevel>) => void;
 }
 
 interface State {
-  dedup: LogsDedupStrategy;
   deferLogs: boolean;
-  hiddenLogLevels: Set<LogLevel>;
   renderAll: boolean;
   showLabels: boolean | null; // Tristate: null means auto
   showLocalTime: boolean;
@@ -76,9 +74,7 @@ export default class Logs extends PureComponent<Props, State> {
   renderAllTimer: NodeJS.Timer;
 
   state = {
-    dedup: LogsDedupStrategy.none,
     deferLogs: true,
-    hiddenLogLevels: new Set(),
     renderAll: false,
     showLabels: null,
     showLocalTime: true,
@@ -109,12 +105,11 @@ export default class Logs extends PureComponent<Props, State> {
   }
 
   onChangeDedup = (dedup: LogsDedupStrategy) => {
-    this.setState(prevState => {
-      if (prevState.dedup === dedup) {
-        return { dedup: LogsDedupStrategy.none };
-      }
-      return { dedup };
-    });
+    const { onDedupStrategyChange } = this.props;
+    if (this.props.dedupStrategy === dedup) {
+      return onDedupStrategyChange(LogsDedupStrategy.none);
+    }
+    return onDedupStrategyChange(dedup);
   };
 
   onChangeLabels = (event: React.SyntheticEvent) => {
@@ -140,7 +135,7 @@ export default class Logs extends PureComponent<Props, State> {
 
   onToggleLogLevel = (rawLevel: string, hiddenRawLevels: Set<string>) => {
     const hiddenLogLevels: Set<LogLevel> = new Set(Array.from(hiddenRawLevels).map(level => LogLevel[level]));
-    this.setState({ hiddenLogLevels });
+    this.props.onToggleLogLevel(hiddenLogLevels);
   };
 
   onClickScan = (event: React.SyntheticEvent) => {
@@ -163,23 +158,23 @@ export default class Logs extends PureComponent<Props, State> {
       range,
       scanning,
       scanRange,
+      width,
+      dedupedData,
     } = this.props;
 
     if (!data) {
       return null;
     }
 
-    const { dedup, deferLogs, hiddenLogLevels, renderAll, showLocalTime, showUtc } = this.state;
+    const { deferLogs, renderAll, showLocalTime, showUtc } = this.state;
     let { showLabels } = this.state;
+    const { dedupStrategy } = this.props;
     const hasData = data && data.rows && data.rows.length > 0;
-    const showDuplicates = dedup !== LogsDedupStrategy.none;
-
-    // Filtering
-    const filteredData = filterLogLevels(data, hiddenLogLevels);
-    const dedupedData = dedupLogRows(filteredData, dedup);
+    const showDuplicates = dedupStrategy !== LogsDedupStrategy.none;
     const dedupCount = dedupedData.rows.reduce((sum, row) => sum + row.duplicates, 0);
     const meta = [...data.meta];
-    if (dedup !== LogsDedupStrategy.none) {
+
+    if (dedupStrategy !== LogsDedupStrategy.none) {
       meta.push({
         label: 'Dedup count',
         value: dedupCount,
@@ -205,13 +200,15 @@ export default class Logs extends PureComponent<Props, State> {
 
     // React profiler becomes unusable if we pass all rows to all rows and their labels, using getter instead
     const getRows = () => processedRows;
+    const timeSeries = data.series.map(series => new TimeSeries(series));
 
     return (
       <div className="logs-panel">
         <div className="logs-panel-graph">
           <Graph
-            data={data.series}
-            height="100px"
+            data={timeSeries}
+            height={100}
+            width={width}
             range={range}
             id={`explore-logs-graph-${exploreId}`}
             onChangeTime={this.props.onChangeTime}
@@ -230,7 +227,7 @@ export default class Logs extends PureComponent<Props, State> {
                   key={i}
                   value={dedupType}
                   onChange={this.onChangeDedup}
-                  selected={dedup === dedupType}
+                  selected={dedupStrategy === dedupType}
                   tooltip={LogsDedupDescription[dedupType]}
                 >
                   {dedupType}

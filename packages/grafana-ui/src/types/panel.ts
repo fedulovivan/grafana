@@ -1,10 +1,11 @@
-import { TimeSeries, LoadingState } from './series';
+import { ComponentClass } from 'react';
+import { TimeSeries, LoadingState, TableData } from './data';
 import { TimeRange } from './time';
 
 export type InterpolateFunction = (value: string, format?: string | Function) => string;
 
 export interface PanelProps<T = any> {
-  timeSeries: TimeSeries[];
+  panelData: PanelData;
   timeRange: TimeRange;
   loading: LoadingState;
   options: T;
@@ -14,9 +15,32 @@ export interface PanelProps<T = any> {
   onInterpolate: InterpolateFunction;
 }
 
-export interface PanelOptionsProps<T = any> {
+export interface PanelData {
+  timeSeries?: TimeSeries[];
+  tableData?: TableData;
+}
+
+export interface PanelEditorProps<T = any> {
   options: T;
   onChange: (options: T) => void;
+}
+
+export class ReactPanelPlugin<TOptions = any> {
+  panel: ComponentClass<PanelProps<TOptions>>;
+  editor?: ComponentClass<PanelEditorProps<TOptions>>;
+  defaults?: TOptions;
+
+  constructor(panel: ComponentClass<PanelProps<TOptions>>) {
+    this.panel = panel;
+  }
+
+  setEditor(editor: ComponentClass<PanelEditorProps<TOptions>>) {
+    this.editor = editor;
+  }
+
+  setDefaults(defaults: TOptions) {
+    this.defaults = defaults;
+  }
 }
 
 export interface PanelSize {

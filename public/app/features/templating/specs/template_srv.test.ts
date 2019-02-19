@@ -348,7 +348,7 @@ describe('templateSrv', () => {
     });
   });
 
-  describe('updateTemplateData with simple value', () => {
+  describe('updateIndex with simple value', () => {
     beforeEach(() => {
       initTemplateSrv([{ type: 'query', name: 'test', current: { value: 'muuuu' } }]);
     });
@@ -473,10 +473,10 @@ describe('templateSrv', () => {
           type: 'custom',
           name: 'foo',
           current: { value: 'constructor', text: 'constructor' },
-        }
+        },
       ]);
       _templateSrv.setGrafanaVariable('$__auto_interval_interval', '13m');
-      _templateSrv.updateTemplateData();
+      _templateSrv.updateIndex();
     });
 
     it('should replace with text except for grafanaVariables', () => {
