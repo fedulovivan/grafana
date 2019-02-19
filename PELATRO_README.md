@@ -5,5 +5,5 @@
 `yarn watch`
 
 # launch grafana backend
-`./bin/linux-amd64/grafana-server`
+`GF_SERVER_HTTP_PORT=4000 ./bin/linux-amd64/grafana-server`
 note that backend restart is required after rebuilding frontend assets
